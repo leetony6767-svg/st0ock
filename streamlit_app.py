@@ -1,15 +1,15 @@
 import streamlit as st
 import os
 
-# --- 1. 自動安裝與導入 Gemini 套件 ---
+# --- 1. 自動安裝 Gemini 套件 ---
 try:
     import google.generativeai as genai
 except ImportError:
     os.system('pip install google-generativeai')
     import google.generativeai as genai
 
-# --- 2. 硬編碼 API Key (依照您的要求直接寫入) ---
-GEMINI_API_KEY = "AQ.Ab8RN6J7tj4gKA90MyVLJe6g5usCvbIdY8EiQZMHdeCcAUl2NQ"
+# --- 2. 硬編碼您圖片中的最新 API Key ---
+GEMINI_API_KEY = "AQ.Ab8RN6K5eZ-WJT-ZqH6U8efmO-oYpI-V-fVn4" # 請確認這串跟您圖片中的一模一樣
 genai.configure(api_key=GEMINI_API_KEY)
 
 # --- 3. 核心法律專家指令設定 ---
@@ -46,70 +46,37 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 5. 頁面切換邏輯 ---
+# --- 5. 呼叫 AI 邏輯 ---
 def call_ai(prompt):
     try:
         model = genai.GenerativeModel('gemini-1.5-flash', system_instruction=SYSTEM_PROMPT)
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        return f"❌ 引擎啟動失敗，請確認 API Key 是否有效。錯誤資訊：{str(e)}"
+        return f"❌ 分析失敗。請檢查 API Key 是否正確。錯誤資訊：{str(e)}"
 
-# --- A. 合約審查頁面 ---
+# --- 6. 頁面內容 (合約審查) ---
 if st.session_state.active_page == '合約審查':
     st.markdown('<div class="header-text">合約審查</div>', unsafe_allow_html=True)
     st.markdown('<div class="subtitle-text">逐條掃描風險條款，提供修訂建議</div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="section-label">合約類型</div>', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
-    if c1.button("租賃合約"): st.session_state.selected_tag = "租賃合約"
-    if c2.button("買賣合約"): st.session_state.selected_tag = "買賣合約"
-    if c3.button("雇傭合約"): st.session_state.selected_tag = "雇傭合約"
-    c4, c5, c6 = st.columns(3)
-    if c4.button("服務合約"): st.session_state.selected_tag = "服務合約"
-    if c5.button("保密協議"): st.session_state.selected_tag = "保密協議"
-    if c6.button("其他"): st.session_state.selected_tag = "其他"
-
-    st.markdown(f'<div class="section-label">合約內容 (當前選取：{st.session_state.selected_tag})</div>', unsafe_allow_html=True)
+    tags1 = st.columns(3)
+    if tags1[0].button("租賃合約"): st.session_state.selected_tag = "租賃合約"
+    if tags1[1].button("買賣合約"): st.session_state.selected_tag = "買賣合約"
+    if tags1[2].button("雇傭合約"): st.session_state.selected_tag = "雇傭合約"
+    
+    st.markdown(f'<div class="section-label">合約內容 (模式：{st.session_state.selected_tag})</div>', unsafe_allow_html=True)
     user_input = st.text_area("input", placeholder="請貼上合約條文...", height=300, label_visibility="collapsed")
 
     st.markdown('<div class="main-action-btn">', unsafe_allow_html=True)
     if st.button("開始審查"):
         if user_input:
-            with st.spinner("⚖️ 強棒法律 AI 正在進行深度審查..."):
-                res = call_ai(f"請以專業律師身份，審查這份【{st.session_state.selected_tag}】，找出隱藏風險並提供修改條文：\n\n{user_input}")
+            with st.spinner("⚖️ 正在調用 Gemini 法律專家進行審查..."):
+                res = call_ai(f"請審查這份【{st.session_state.selected_tag}】並產出專業報告：\n\n{user_input}")
                 st.markdown(f'<div style="background-color:white; padding:20px; border-radius:12px; border-left:6px solid #E11D48; margin-top:20px;">{res}</div>', unsafe_allow_html=True)
-        else: st.warning("請先輸入合約內容。")
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- B. 案情分析頁面 ---
-elif st.session_state.active_page == '案情分析':
-    st.markdown('<div class="header-text">案情分析</div>', unsafe_allow_html=True)
-    st.markdown('<div class="subtitle-text">梳理法律事實，找出核心爭點</div>', unsafe_allow_html=True)
-    case_input = st.text_area("請描述案情事實經過：", height=300, placeholder="例如：車禍發生經過、勞資爭議事實...")
-    st.markdown('<div class="main-action-btn">', unsafe_allow_html=True)
-    if st.button("生成分析報告"):
-        if case_input:
-            with st.spinner("⚖️ 正在分析法律爭點與舉證責任..."):
-                res = call_ai(f"分析以下案情事實，整理法律爭點、舉證責任分配及訴訟策略：\n\n{case_input}")
-                st.markdown(f'<div style="background-color:white; padding:20px; border-radius:12px; border-left:6px solid #1E293B; margin-top:20px;">{res}</div>', unsafe_allow_html=True)
-        else: st.warning("請先描述案情。")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# --- C. 法條檢索頁面 ---
-elif st.session_state.active_page == '法條檢索':
-    st.markdown('<div class="header-text">法條檢索</div>', unsafe_allow_html=True)
-    search_q = st.text_input("輸入關鍵字或法條字號：", placeholder="例如：民法 184 條")
-    st.markdown('<div class="main-action-btn">', unsafe_allow_html=True)
-    if st.button("檢索法律依據"):
-        if search_q:
-            with st.spinner("⚖️ 正在檢索台灣現行法規與判例要旨..."):
-                res = call_ai(f"請檢索與『{search_q}』相關之台灣現行法條、大法官解釋及重要最高法院判例要旨：")
-                st.markdown(f'<div style="background-color:white; padding:20px; border-radius:12px; border-left:6px solid #3B82F6; margin-top:20px;">{res}</div>', unsafe_allow_html=True)
-        else: st.warning("請輸入關鍵字。")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# --- 6. 底部導覽列 (真實點擊切換) ---
+# --- 7. 底部導覽列 ---
 st.markdown('<div style="height: 120px;"></div>', unsafe_allow_html=True)
 nav_bar = st.container()
 with nav_bar:
